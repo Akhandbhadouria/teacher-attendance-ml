@@ -1,0 +1,148 @@
+{% extends 'attendance/base.html' %}
+
+{% block title %}Register User - Face Attendance System{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="card" style="max-width: 800px; margin: 0 auto;">
+        <h1 class="card-title">Register New User</h1>
+
+        <div id="alert-container"></div>
+
+        <form id="registration-form">
+            <div class="form-group">
+                <label class="form-label" for="user_id">User ID *</label>
+                <input type="text" id="user_id" class="form-input" placeholder="e.g., emp001" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="name">Full Name *</label>
+                <input type="text" id="name" class="form-input" placeholder="e.g., John Doe" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="email">Email</label>
+                <input type="email" id="email" class="form-input" placeholder="e.g., john@example.com">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="phone">Phone</label>
+                <input type="tel" id="phone" class="form-input" placeholder="e.g., 1234567890">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Capture Face *</label>
+                <div class="video-container">
+                    <video id="video" autoplay></video>
+                    <canvas id="canvas" style="display: none;"></canvas>
+                </div>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button type="button" id="start-camera" class="btn btn-primary">Start Camera</button>
+                    <button type="button" id="capture" class="btn btn-success" style="display: none;">Capture
+                        Face</button>
+                </div>
+                <p style="color: var(--gray); margin-top: 0.5rem; text-align: center;">
+                    Position your face in the center and click "Capture Face"
+                </p>
+            </div>
+
+            <button type="submit" id="submit-btn" class="btn btn-primary" style="width: 100%;" disabled>
+                Register User
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    let video = document.getElementById('video');
+    let canvas = document.getElementById('canvas');
+    let captureBtn = document.getElementById('capture');
+    let startCameraBtn = document.getElementById('start-camera');
+    let submitBtn = document.getElementById('submit-btn');
+    let capturedImage = null;
+
+    startCameraBtn.addEventListener('click', async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            startCameraBtn.style.display = 'none';
+            captureBtn.style.display = 'inline-block';
+        } catch (err) {
+            showAlert('Error accessing camera: ' + err.message, 'error');
+        }
+    });
+
+    captureBtn.addEventListener('click', () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        capturedImage = canvas.toDataURL('image/jpeg');
+
+        // Stop camera
+        video.srcObject.getTracks().forEach(track => track.stop());
+        video.style.display = 'none';
+        canvas.style.display = 'block';
+        captureBtn.textContent = 'Retake';
+        submitBtn.disabled = false;
+
+        showAlert('Face captured successfully! You can now submit the form.', 'success');
+    });
+
+    document.getElementById('registration-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        if (!capturedImage) {
+            showAlert('Please capture your face first!', 'error');
+            return;
+        }
+
+        const data = {
+            user_id: document.getElementById('user_id').value,
+            name: document.getElementById('name').value,
+            email: document.getElementById('email').value,
+            phone: document.getElementById('phone').value,
+            image: capturedImage
+        };
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Registering...';
+
+        try {
+            const response = await fetch('/register/submit/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showAlert(result.message, 'success');
+                setTimeout(() => {
+                    window.location.href = '/users/';
+                }, 2000);
+            } else {
+                showAlert(result.message, 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Register User';
+            }
+        } catch (err) {
+            showAlert('Error: ' + err.message, 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Register User';
+        }
+    });
+
+    function showAlert(message, type) {
+        const alertContainer = document.getElementById('alert-container');
+        const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+        alertContainer.innerHTML = `<div class="alert ${alertClass}">${message}</div>`;
+
+        setTimeout(() => {
+            alertContainer.innerHTML = '';
+        }, 5000);
+    }
+</script>
+{% endblock %}

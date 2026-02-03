@@ -1,0 +1,53 @@
+{% extends 'attendance/base.html' %}
+
+{% block title %}Attendance Records - Face Attendance System{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="card">
+        <h1 class="card-title">Attendance Records</h1>
+
+        <form method="GET" style="margin-bottom: 2rem;">
+            <div class="form-group">
+                <label class="form-label" for="date">Select Date:</label>
+                <input type="date" id="date" name="date" class="form-input" value="{{ selected_date }}"
+                    onchange="this.form.submit()">
+            </div>
+        </form>
+
+        <div class="stat-card" style="margin-bottom: 2rem;">
+            <div class="stat-number">{{ total_present }}</div>
+            <div class="stat-label">Present on {{ selected_date }}</div>
+        </div>
+
+        {% if records %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>User ID</th>
+                    <th>Name</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ record.user_id }}</td>
+                    <td>{{ record.name }}</td>
+                    <td>{{ record.date }}</td>
+                    <td>{{ record.time }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="alert alert-info">
+            No attendance records found for {{ selected_date }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

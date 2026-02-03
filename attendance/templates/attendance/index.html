@@ -1,0 +1,77 @@
+{% extends 'attendance/base.html' %}
+
+{% block title %}Dashboard - Face Attendance System{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <h1 class="card-title" style="text-align: center; color: white; margin-bottom: 2rem; font-size: 2.5rem;">
+        Welcome to Face Attendance System
+    </h1>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-number">{{ total_users }}</div>
+            <div class="stat-label">Total Users</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ present_today }}</div>
+            <div class="stat-label">Present Today</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ absent_today }}</div>
+            <div class="stat-label">Absent Today</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 class="card-title">Quick Actions</h2>
+        <div
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1.5rem;">
+            <a href="{% url 'register_page' %}" class="btn btn-primary" style="text-align: center;">
+                📝 Register New User
+            </a>
+            <a href="{% url 'mark_attendance_page' %}" class="btn btn-success" style="text-align: center;">
+                ✅ Mark Attendance
+            </a>
+            <a href="{% url 'attendance_records' %}" class="btn btn-primary" style="text-align: center;">
+                📊 View Attendance
+            </a>
+            <a href="{% url 'users_list' %}" class="btn btn-primary" style="text-align: center;">
+                👥 View Users
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 class="card-title">Today's Date: {{ today_date }}</h2>
+        <p style="color: var(--gray); margin-top: 1rem;">
+            The system uses real-time face recognition to automatically mark attendance.
+            Multiple faces can be detected and recognized simultaneously.
+        </p>
+    </div>
+
+    <div class="card">
+        <h2 class="card-title">Features</h2>
+        <div
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+            <div>
+                <h3 style="color: var(--primary); margin-bottom: 0.5rem;">🎯 Multi-Face Detection</h3>
+                <p style="color: var(--gray);">Detect and recognize multiple people simultaneously in real-time.</p>
+            </div>
+            <div>
+                <h3 style="color: var(--primary); margin-bottom: 0.5rem;">⚡ Automatic Marking</h3>
+                <p style="color: var(--gray);">Attendance is marked automatically when a registered face is detected.
+                </p>
+            </div>
+            <div>
+                <h3 style="color: var(--primary); margin-bottom: 0.5rem;">📊 Analytics</h3>
+                <p style="color: var(--gray);">View detailed attendance records and statistics.</p>
+            </div>
+            <div>
+                <h3 style="color: var(--primary); margin-bottom: 0.5rem;">🔒 Secure</h3>
+                <p style="color: var(--gray);">Face encodings are stored securely and cannot be reverse-engineered.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
