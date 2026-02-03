@@ -1,0 +1,51 @@
+{% extends 'attendance/base.html' %}
+
+{% block title %}Admin Login - College Face Attendance{% endblock %}
+
+{% block content %}
+<div class="fade-in" style="min-height: 80vh; display: flex; align-items: center; justify-content: center;">
+    <div class="card" style="max-width: 450px; width: 100%; padding: 3rem;">
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">🎓</div>
+            <h1 class="card-title" style="font-size: 2rem;">College Admin</h1>
+            <p style="color: var(--gray);">Login to manage faculty attendance</p>
+        </div>
+
+        <form method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+
+            {% if form.errors %}
+            <div class="alert alert-error" style="margin-bottom: 1.5rem;">
+                Invalid username or password.
+            </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label for="id_username">Username</label>
+                <input type="text" name="username" class="form-control" id="id_username" required autofocus
+                    placeholder="Enter admin username">
+            </div>
+
+            <div class="form-group">
+                <label for="id_password">Password</label>
+                <input type="password" name="password" class="form-control" id="id_password" required
+                    placeholder="Enter password">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem; padding: 1rem;">
+                Login to Portal
+            </button>
+
+            <input type="hidden" name="next" value="{{ next|default:'/' }}">
+        </form>
+
+        <div style="text-align: center; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(0,0,0,0.05);">
+            <a href="{% url 'mark_attendance_page' %}"
+                style="text-decoration: none; color: var(--primary); font-size: 0.9rem;">
+                Looking for Kiosk Mode? <br>
+                <strong>Go to Attendance Marking &rarr;</strong>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

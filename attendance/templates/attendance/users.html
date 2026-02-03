@@ -1,39 +1,39 @@
 {% extends 'attendance/base.html' %}
 
-{% block title %}Users - Face Attendance System{% endblock %}
+{% block title %}Faculty Directory - College Admin{% endblock %}
 
 {% block content %}
 <div class="fade-in">
     <div class="card">
-        <h1 class="card-title">Registered Users ({{ users|length }})</h1>
+        <h1 class="card-title">Faculty Directory ({{ teachers|length }})</h1>
 
-        {% if users %}
+        {% if teachers %}
         <div class="user-grid">
-            {% for user in users %}
+            {% for teacher in teachers %}
             <div class="user-card">
-                {% if user.image_path %}
-                <img src="{{ user.image_path }}" alt="{{ user.name }}" class="user-avatar">
+                {% if teacher.image_path %}
+                <img src="{{ teacher.image_path }}" alt="{{ teacher.name }}" class="user-avatar">
                 {% else %}
                 <div class="user-avatar"
                     style="background: linear-gradient(135deg, var(--primary), var(--secondary)); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem; font-weight: bold;">
-                    {{ user.name|first|upper }}
+                    {{ teacher.name|first|upper }}
                 </div>
                 {% endif %}
 
-                <div class="user-name">{{ user.name }}</div>
-                <div class="user-id">ID: {{ user.user_id }}</div>
+                <div class="user-name">{{ teacher.name }}</div>
+                <div class="user-id">Teacher ID: {{ teacher.user_id }}</div>
 
                 <div style="color: var(--gray); font-size: 0.9rem; margin-bottom: 1rem;">
-                    {% if user.email != 'N/A' %}
-                    <div>📧 {{ user.email }}</div>
+                    {% if teacher.email != 'N/A' %}
+                    <div>📧 {{ teacher.email }}</div>
                     {% endif %}
-                    {% if user.phone != 'N/A' %}
-                    <div>📱 {{ user.phone }}</div>
+                    {% if teacher.phone != 'N/A' %}
+                    <div>📱 {{ teacher.phone }}</div>
                     {% endif %}
-                    <div style="margin-top: 0.5rem;">📅 Registered: {{ user.registered_at }}</div>
+                    <div style="margin-top: 0.5rem;">📅 Registered: {{ teacher.registered_at }}</div>
                 </div>
 
-                <a href="{% url 'user_detail' user.user_id %}" class="btn btn-primary" style="width: 100%;">
+                <a href="{% url 'user_detail' teacher.user_id %}" class="btn btn-primary" style="width: 100%;">
                     View Details
                 </a>
             </div>

@@ -1,42 +1,37 @@
-# 🎯 Face Attendance System - Complete Web Application
+# 🎓 College Face Attendance System
 
-A modern, real-time face recognition-based attendance system with a beautiful Django web interface.
+A secure, real-time face recognition attendance management portal designed for Colleges and Educational Institutions.
 
 ## ✨ Features
 
-- **📊 Dashboard** - Real-time statistics and overview
-- **📝 User Registration** - Register users via webcam with live face capture
-- **✅ Mark Attendance** - Automatic multi-face detection and attendance marking
-- **👥 User Management** - View and manage all registered users
-- **📈 Statistics** - Attendance trends and analytics
-- **🎨 Modern UI** - Beautiful gradient design with smooth animations
-- **🚀 Real-time Processing** - Instant face recognition and feedback
+- **🔐 College Admin Portal** - Secure access for Management/Owners
+- **👩‍🏫 Faculty Management** - Manage teacher records and profiles
+- **📊 Real-time Dashboard** - Monitor faculty presence instantly
+- **✅ Kiosk Mode** - Dedicated public interface for attendance marking
+- **📈 Advanced Analytics** - Track attendance trends and reliability
+- **🚀 Instant Recognition** - Fast face detection using OpenCV
 
 ## 🚀 Quick Start
 
-### 1. Start the Django Server
-
+### 1. Start the Server
 ```bash
-cd /Users/lambardaar/Downloads/dig_attendence
 python manage.py runserver
 ```
 
-### 2. Open Your Browser
+### 2. Access the Portal
+- **Admin Portal**: http://127.0.0.1:8000/ (Redirects to login)
+- **Kiosk Mode**: http://127.0.0.1:8000/mark-attendance/
 
-Navigate to: **http://127.0.0.1:8000/**
+### 3. Default Credentials
+- **Username**: `admin`
+- **Password**: (The one you created)
 
-### 3. Start Using the System
-
-The web interface provides an intuitive navigation with the following pages:
-
-- **Dashboard** (/) - Overview and quick actions
-- **Register** (/register/) - Register new users
-- **Mark Attendance** (/mark-attendance/) - Real-time attendance marking
-- **Users** (/users/) - View all registered users
-- **Attendance** (/attendance/) - View attendance records
-- **Statistics** (/statistics/) - Analytics and trends
-
-## 📱 How to Use
+## 📱 Workflow
+1. **Admin** logs in to the portal.
+2. **Admin** registers new Teachers via the "Add Teacher" page.
+3. **Kiosk** (entrance device) is set to "Kiosk Mode".
+4. **Teachers** walk in, face the camera, and get marked present.
+5. **Admin** sees real-time updates on the Dashboard.
 
 ### Register a New User
 
@@ -226,32 +221,29 @@ dig_attendence/
 
 ## 📊 Data Storage
 
-All data is stored locally in JSON format:
+All data is stored locally in a SQLite database (`db.sqlite3`):
 
-**Users** (`data/users.json`):
-```json
-{
-  "12317691": {
-    "name": "irfan",
-    "email": "",
-    "phone": "",
-    "registered_at": "2026-02-03 22:40:15"
-  }
-}
-```
+**Users Table**:
+- User ID (Primary Key)
+- Name
+- Email
+- Phone
+- Registration Date
 
-**Attendance** (`data/attendance.json`):
-```json
-[
-  {
-    "user_id": "12317691",
-    "name": "irfan",
-    "date": "2026-02-03",
-    "time": "09:30:15",
-    "timestamp": "2026-02-03 09:30:15"
-  }
-]
-```
+**Attendance Table**:
+- ID (Primary Key)
+- User (Foreign Key)
+- Date
+- Time
+- Timestamp
+
+## 🔒 Administration
+
+Access the Django Admin Panel to manage users and attendance:
+
+1. Go to: **http://127.0.0.1:8000/admin/**
+2. Login with superuser credentials
+3. View, edit, or delete records
 
 ## 🛠️ Troubleshooting
 
@@ -291,14 +283,17 @@ All data is stored locally in JSON format:
 
 ## 🚀 Advanced Features
 
-### CLI Interface (Optional)
+### API Endpoints
 
-You can still use the command-line interface:
+**POST /register/submit/**
+- Register new user
+- Input: JSON with user_id, name, email, phone, image (base64)
+- Output: Success status and message
 
-```bash
-cd src
-python main.py
-```
+**POST /mark-attendance/process/**
+- Process webcam frame
+- Input: JSON with image (base64)
+- Output: Detected faces and attendance status
 
 This provides:
 - Text-based menu

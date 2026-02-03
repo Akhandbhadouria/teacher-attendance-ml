@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
 from django.utils import timezone
 from django.db.models import Count, Q
@@ -22,40 +23,44 @@ from .models import User, Attendance
 # Initialize face recognition system
 face_system = SimpleFaceRecognitionSystem()
 
+@login_required
 def index(request):
-    """Home page"""
-    total_users = User.objects.count()
+    """College Admin Dashboard"""
+    total_teachers = User.objects.count()
     today = date.today()
     present_today = Attendance.objects.filter(date=today).count()
-    absent_today = total_users - present_today
+    absent_today = total_teachers - present_today
     
     context = {
-        'total_users': total_users,
+        'total_teachers': total_teachers,
         'present_today': present_today,
         'absent_today': absent_today,
+        'today_date': today.strftime("%B %d, %Y")
     }
     return render(request, 'attendance/index.html', context)
 
+@login_required
 def users_list(request):
-    """List all registered users"""
-    users = User.objects.all()
+    """List all Faculty/Teachers"""
+    teachers = User.objects.all()
     
-    users_data = []
-    for user in users:
-        users_data.append({
-            'user_id': user.user_id,
-            'name': user.name,
-            'email': user.email or 'N/A',
-            'phone': user.phone or 'N/A',
-            'registered_at': user.registered_at.strftime("%Y-%m-%d %H:%M:%S"),
-            'image_path': f'/media/images/{user.user_id}.jpg' if os.path.exists(f'data/images/{user.user_id}.jpg') else None
+    teachers_data = []
+    for teacher in teachers:
+        teachers_data.append({
+            'user_id': teacher.user_id,
+            'name': teacher.name,
+            'email': teacher.email or 'N/A',
+            'phone': teacher.phone or 'N/A',
+            'registered_at': teacher.registered_at.strftime("%Y-%m-%d %H:%M:%S"),
+            'image_path': f'/media/images/{teacher.user_id}.jpg' if os.path.exists(f'data/images/{teacher.user_id}.jpg') else None
         })
     
-    context = {'users': users_data}
+    context = {'teachers': teachers_data}
     return render(request, 'attendance/users.html', context)
 
+@login_required
 def attendance_records(request):
-    """View attendance records"""
+    """View teacher attendance logs"""
     selected_date = request.GET.get('date', date.today().strftime("%Y-%m-%d"))
     
     try:
@@ -82,14 +87,16 @@ def attendance_records(request):
     }
     return render(request, 'attendance/attendance.html', context)
 
+@login_required
 def register_page(request):
-    """Registration page"""
+    """Teacher Registration page - Admin only"""
     return render(request, 'attendance/register.html')
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@login_required
 def register_user(request):
-    """Register a new user"""
+    """Register a new teacher"""
     try:
         data = json.loads(request.body)
         user_id = data.get('user_id')
@@ -103,7 +110,7 @@ def register_user(request):
         
         # Check if user already exists
         if User.objects.filter(user_id=user_id).exists():
-            return JsonResponse({'success': False, 'message': f'User ID {user_id} already registered'})
+            return JsonResponse({'success': False, 'message': f'Teacher ID {user_id} already registered'})
         
         # Decode and save image
         try:
@@ -142,7 +149,7 @@ def register_user(request):
             
             return JsonResponse({
                 'success': True,
-                'message': f'Successfully registered {name}!'
+                'message': f'Successfully registered Teacher {name}!'
             })
             
         except IntegrityError:
@@ -150,7 +157,7 @@ def register_user(request):
             face_system.delete_user(user_id)
             if os.path.exists(image_path):
                 os.remove(image_path)
-            return JsonResponse({'success': False, 'message': 'User already exists'})
+            return JsonResponse({'success': False, 'message': 'Teacher already exists'})
             
     except Exception as e:
         import traceback
@@ -158,7 +165,7 @@ def register_user(request):
         return JsonResponse({'success': False, 'message': f'Server error: {str(e)}'})
 
 def mark_attendance_page(request):
-    """Attendance marking page"""
+    """Kiosk Mode: Attendance marking page (Public access)"""
     total_registered = User.objects.count()
     today = date.today()
     marked_today = Attendance.objects.filter(date=today).count()
@@ -172,7 +179,7 @@ def mark_attendance_page(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def process_attendance(request):
-    """Process attendance from webcam frame"""
+    """Process attendance from webcam frame (Public access)"""
     try:
         data = json.loads(request.body)
         image_data = data.get('image')
@@ -189,17 +196,13 @@ def process_attendance(request):
             if frame is None:
                 return JsonResponse({'success': False, 'message': 'Failed to decode image'})
             
-            print(f"Frame decoded successfully: {frame.shape}")
         except Exception as img_error:
-            print(f"Image decode error: {img_error}")
             return JsonResponse({'success': False, 'message': f'Image decode error: {str(img_error)}'})
         
         # Recognize faces
         try:
             recognized_faces = face_system.recognize_faces(frame)
-            print(f"Recognized {len(recognized_faces)} face(s)")
         except Exception as rec_error:
-            print(f"Recognition error: {rec_error}")
             return JsonResponse({'success': False, 'message': f'Recognition error: {str(rec_error)}'})
         
         results = []
@@ -212,8 +215,6 @@ def process_attendance(request):
             
             # Convert numpy int32 to Python int for JSON serialization
             location_tuple = tuple(int(x) for x in location)
-            
-            print(f"Detected face: {name}, confidence: {confidence:.2%}")
             
             if name != "Unknown":
                 try:
@@ -228,8 +229,6 @@ def process_attendance(request):
                             'timestamp': timezone.now()
                         }
                     )
-                    
-                    print(f"Attendance marking for {name}: {'Success' if created else 'Already marked'}")
                     
                     results.append({
                         'user_id': name,
@@ -251,19 +250,17 @@ def process_attendance(request):
                     'location': location_tuple
                 })
         
-        print(f"Returning {len(results)} results")
         return JsonResponse({'success': True, 'faces': results})
         
     except Exception as e:
         import traceback
-        error_details = traceback.format_exc()
-        print(f"Error in process_attendance: {error_details}")
         return JsonResponse({'success': False, 'message': f'Server error: {str(e)}'})
 
+@login_required
 def user_detail(request, user_id):
-    """View individual user details and attendance history"""
-    user = get_object_or_404(User, user_id=user_id)
-    attendance_history = Attendance.objects.filter(user=user).order_by('-date')
+    """View individual teacher details and history"""
+    teacher = get_object_or_404(User, user_id=user_id)
+    attendance_history = Attendance.objects.filter(user=teacher).order_by('-date')
     
     attendance_data = []
     for record in attendance_history:
@@ -275,11 +272,11 @@ def user_detail(request, user_id):
     
     context = {
         'user_id': user_id,
-        'user': {
-            'name': user.name,
-            'email': user.email or '',
-            'phone': user.phone or '',
-            'registered_at': user.registered_at.strftime("%Y-%m-%d %H:%M:%S")
+        'teacher': {
+            'name': teacher.name,
+            'email': teacher.email or '',
+            'phone': teacher.phone or '',
+            'registered_at': teacher.registered_at.strftime("%Y-%m-%d %H:%M:%S")
         },
         'attendance_history': attendance_data,
         'total_days': len(attendance_data),
@@ -287,12 +284,13 @@ def user_detail(request, user_id):
     }
     return render(request, 'attendance/user_detail.html', context)
 
+@login_required
 def statistics(request):
-    """View attendance statistics"""
-    total_users = User.objects.count()
+    """College Stats"""
+    total_teachers = User.objects.count()
     today = date.today()
     present_today = Attendance.objects.filter(date=today).count()
-    absent_today = total_users - present_today
+    absent_today = total_teachers - present_today
     
     # Get attendance for last 7 days
     attendance_trend = []
@@ -305,7 +303,7 @@ def statistics(request):
         })
     
     context = {
-        'total_users': total_users,
+        'total_teachers': total_teachers,
         'present_today': present_today,
         'absent_today': absent_today,
         'attendance_trend': attendance_trend,
@@ -315,8 +313,9 @@ def statistics(request):
 
 @csrf_exempt
 @require_http_methods(["POST", "DELETE"])
+@login_required
 def delete_user(request, user_id):
-    """Delete a user from the system"""
+    """Delete a teacher"""
     try:
         # Get user
         user = get_object_or_404(User, user_id=user_id)
@@ -336,14 +335,14 @@ def delete_user(request, user_id):
         # Delete user (this will CASCADE delete all attendance records)
         user.delete()
         
-        print(f"User {user_id} ({user_name}) and all attendance records deleted successfully")
+        print(f"Teacher {user_id} ({user_name}) and all attendance records deleted successfully")
         return JsonResponse({
             'success': True,
-            'message': f'User {user_name} and all attendance records deleted successfully'
+            'message': f'Teacher {user_name} and all data deleted successfully'
         })
             
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
-        print(f"Error deleting user: {error_details}")
+        print(f"Error deleting teacher: {error_details}")
         return JsonResponse({'success': False, 'message': f'Server error: {str(e)}'})
