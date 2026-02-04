@@ -1,0 +1,156 @@
+{% extends 'attendance/teacher_base.html' %}
+
+{% block title %}Faculty Login{% endblock %}
+
+{% block nav_items %}
+<a href="{% url 'index' %}" style="text-decoration: none; color: var(--gray); font-weight: 500;">Back to Admin</a>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; min-height: 60vh;">
+    <div class="card" style="width: 100%; max-width: 500px; padding: 2.5rem;">
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <span style="font-size: 3rem;">👋</span>
+            <h2 style="color: var(--dark); margin-top: 1rem;">Faculty Check-In</h2>
+            <p style="color: var(--gray);">Choose your preferred login method</p>
+        </div>
+
+        <div
+            style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
+            <button onclick="switchTab('password')" id="tab-password" class="btn"
+                style="flex: 1; border: 1px solid var(--border); background: var(--primary); color: white;">Password</button>
+            <button onclick="switchTab('face')" id="tab-face" class="btn"
+                style="flex: 1; border: 1px solid var(--border); background: white;">Face ID</button>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-error">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <!-- Password Login Form -->
+        <form method="post" id="password-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label">Teacher ID</label>
+                <input type="text" name="user_id" class="form-input" required placeholder="e.g. T-101">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="password" name="password" class="form-input" required placeholder="••••••••">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Login</button>
+        </form>
+
+        <!-- Face Login Section -->
+        <div id="face-login-section" style="display: none;">
+            <div class="video-container" style="margin-bottom: 1rem;">
+                <video id="login-video" autoplay style="width: 100%; border-radius: 12px;"></video>
+                <canvas id="login-canvas" style="display: none;"></canvas>
+            </div>
+            <div id="login-status" style="text-align: center; margin-bottom: 1rem; font-weight: 500; min-height: 24px;">
+            </div>
+            <button id="start-login-camera" class="btn btn-primary" style="width: 100%;">Start Camera</button>
+            <button id="capture-login" class="btn btn-success" style="width: 100%; display: none;">Scan Face</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchTab(tab) {
+        const passwordForm = document.getElementById('password-form');
+        const faceSection = document.getElementById('face-login-section');
+        const tabPass = document.getElementById('tab-password');
+        const tabFace = document.getElementById('tab-face');
+
+        if (tab === 'password') {
+            passwordForm.style.display = 'block';
+            faceSection.style.display = 'none';
+            tabPass.style.background = 'var(--primary)';
+            tabPass.style.color = 'white';
+            tabFace.style.background = 'white';
+            tabFace.style.color = 'var(--dark)';
+            stopCamera();
+        } else {
+            passwordForm.style.display = 'none';
+            faceSection.style.display = 'block';
+            tabFace.style.background = 'var(--primary)';
+            tabFace.style.color = 'white';
+            tabPass.style.background = 'white';
+            tabPass.style.color = 'var(--dark)';
+        }
+    }
+
+    let videoStream = null;
+    const video = document.getElementById('login-video');
+    const canvas = document.getElementById('login-canvas');
+    const startBtn = document.getElementById('start-login-camera');
+    const captureBtn = document.getElementById('capture-login');
+    const statusDiv = document.getElementById('login-status');
+
+    startBtn.addEventListener('click', async () => {
+        try {
+            videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = videoStream;
+            startBtn.style.display = 'none';
+            captureBtn.style.display = 'block';
+            statusDiv.textContent = 'Position your face in the frame';
+            statusDiv.style.color = 'var(--dark)';
+        } catch (err) {
+            statusDiv.textContent = 'Camera error: ' + err.message;
+            statusDiv.style.color = 'var(--danger)';
+        }
+    });
+
+    function stopCamera() {
+        if (videoStream) {
+            videoStream.getTracks().forEach(track => track.stop());
+            videoStream = null;
+            video.srcObject = null;
+            startBtn.style.display = 'block';
+            captureBtn.style.display = 'none';
+        }
+    }
+
+    captureBtn.addEventListener('click', async () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const imageData = canvas.toDataURL('image/jpeg');
+
+        statusDiv.textContent = 'Verifying...';
+        statusDiv.style.color = 'var(--warning)';
+        captureBtn.disabled = true;
+
+        try {
+            const response = await fetch('{% url "teacher_login" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ image: imageData })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                statusDiv.textContent = 'Success! Redirecting...';
+                statusDiv.style.color = 'var(--success)';
+                window.location.href = result.redirect_url;
+            } else {
+                statusDiv.textContent = result.message || 'Face not recognized';
+                statusDiv.style.color = 'var(--danger)';
+                captureBtn.disabled = false;
+            }
+        } catch (err) {
+            statusDiv.textContent = 'Server error: ' + err.message;
+            statusDiv.style.color = 'var(--danger)';
+            captureBtn.disabled = false;
+        }
+    });
+</script>
+{% endblock %}

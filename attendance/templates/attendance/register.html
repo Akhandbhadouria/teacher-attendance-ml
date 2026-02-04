@@ -31,6 +31,16 @@
             </div>
 
             <div class="form-group">
+                <label class="form-label" for="password">Password *</label>
+                <input type="password" id="password" class="form-input" required placeholder="Enter new password">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="confirm_password">Confirm Password *</label>
+                <input type="password" id="confirm_password" class="form-input" required placeholder="Confirm password">
+            </div>
+
+            <div class="form-group">
                 <label class="form-label">Capture Face *</label>
                 <div class="video-container">
                     <video id="video" autoplay></video>
@@ -91,6 +101,14 @@
     document.getElementById('registration-form').addEventListener('submit', async (e) => {
         e.preventDefault();
 
+        const id_password = document.getElementById('password');
+        const id_confirm_password = document.getElementById('confirm_password');
+
+        if (id_password.value !== id_confirm_password.value) {
+            showAlert('Passwords do not match!', 'error');
+            return;
+        }
+
         if (!capturedImage) {
             showAlert('Please capture your face first!', 'error');
             return;
@@ -101,6 +119,7 @@
             name: document.getElementById('name').value,
             email: document.getElementById('email').value,
             phone: document.getElementById('phone').value,
+            password: id_password.value,
             image: capturedImage
         };
 

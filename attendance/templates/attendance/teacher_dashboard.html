@@ -1,0 +1,92 @@
+{% extends 'attendance/teacher_base.html' %}
+
+{% block title %}My Dashboard{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="header"
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 style="font-size: 2rem; font-weight: 700; color: var(--dark); margin-bottom: 0.5rem;">Hello,
+                {{teacher.name }}</h1>
+            <p style="color: var(--gray); font-size: 1.1rem;">📅 {{ day_name }}, {{ today }}</p>
+        </div>
+
+        <div
+            style="background: white; padding: 1rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; gap: 2rem;">
+            <div style="text-align: center;">
+                <div style="font-size: 0.9rem; color: var(--gray); margin-bottom: 0.2rem;">TOTAL SUBJECTS</div>
+                <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary);">{{ timetable|length }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 class="card-title"
+            style="border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+            Today's Schedule
+        </h2>
+
+        {% if timetable %}
+        <div style="overflow-x: auto;">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">Time</th>
+                        <th style="width: 40%;">Subject</th>
+                        <th style="width: 20%;">Status</th>
+                        <th style="width: 20%;">Mark Attendance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for slot in timetable %}
+                    <tr>
+                        <td style="font-weight: 600;">
+                            {{ slot.start_time|time:"h:i A" }} - {{ slot.end_time|time:"h:i A" }}
+                        </td>
+                        <td>
+                            <div style="font-weight: 600; color: var(--dark);">{{ slot.subject }}</div>
+                        </td>
+                        <td>
+                            {% if slot.status == 'Present' %}
+                            <span
+                                style="display: inline-block; padding: 0.4rem 0.8rem; background: #d1fae5; color: #065f46; border-radius: 50px; font-size: 0.85rem; font-weight: 600;">Present</span>
+                            {% elif slot.status == 'Missed' %}
+                            <span
+                                style="display: inline-block; padding: 0.4rem 0.8rem; background: #fee2e2; color: #991b1b; border-radius: 50px; font-size: 0.85rem; font-weight: 600;">Missed</span>
+                            {% elif slot.status == 'Active' %}
+                            <span
+                                style="display: inline-block; padding: 0.4rem 0.8rem; background: #dbeafe; color: #1e40af; border-radius: 50px; font-size: 0.85rem; font-weight: 600;">In
+                                Progress</span>
+                            {% else %}
+                            <span
+                                style="display: inline-block; padding: 0.4rem 0.8rem; background: var(--light); color: var(--gray); border-radius: 50px; font-size: 0.85rem; font-weight: 600;">Upcoming</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if not slot.is_marked %}
+                            <a href="{% url 'mark_lecture_attendance' slot.id %}" class="btn btn-primary"
+                                style="padding: 0.5rem 1rem; font-size: 0.85rem; width: 100%; text-align: center;">
+                                Check In
+                            </a>
+                            {% else %}
+                            <div style="color: var(--success); font-weight: 600; text-align: center;">
+                                ✓ Marked
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 3rem; color: var(--gray);">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🏖️</div>
+            <p style="font-size: 1.1rem;">No lectures scheduled for today.</p>
+            <p>Enjoy your free time!</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

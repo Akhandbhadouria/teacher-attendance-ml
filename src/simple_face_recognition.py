@@ -125,8 +125,8 @@ class SimpleFaceRecognitionSystem:
                     label, conf = self.recognizer.predict(face_roi)
                     
                     # Lower confidence value means better match
-                    # Threshold: accept if confidence < 100
-                    if conf < 100 and label < len(self.known_face_names):
+                    # Threshold: accept if confidence < 45 (VERY STRICT for security)
+                    if conf < 45 and label < len(self.known_face_names):
                         name = self.known_face_names[label]
                         # Convert confidence to percentage (inverse)
                         confidence = max(0, (100 - conf) / 100)

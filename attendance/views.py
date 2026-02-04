@@ -18,7 +18,7 @@ import numpy as np
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from simple_face_recognition import SimpleFaceRecognitionSystem
-from .models import User, Attendance
+from .models import User, Attendance, Timetable, LectureAttendance
 
 # Initialize face recognition system
 face_system = SimpleFaceRecognitionSystem()
@@ -103,9 +103,10 @@ def register_user(request):
         name = data.get('name')
         email = data.get('email', '')
         phone = data.get('phone', '')
+        password = data.get('password')
         image_data = data.get('image')
         
-        if not all([user_id, name, image_data]):
+        if not all([user_id, name, password, image_data]):
             return JsonResponse({'success': False, 'message': 'Missing required fields'})
         
         # Check if user already exists
@@ -144,7 +145,8 @@ def register_user(request):
                 user_id=user_id,
                 name=name,
                 email=email,
-                phone=phone
+                phone=phone,
+                password=password
             )
             
             return JsonResponse({
@@ -346,3 +348,196 @@ def delete_user(request, user_id):
         error_details = traceback.format_exc()
         print(f"Error deleting teacher: {error_details}")
         return JsonResponse({'success': False, 'message': f'Server error: {str(e)}'})
+
+@login_required
+def manage_timetable(request, user_id):
+    """Admin view to manage teacher's timetable"""
+    teacher = get_object_or_404(User, user_id=user_id)
+    
+    if request.method == 'POST':
+        day = request.POST.get('day')
+        subject = request.POST.get('subject')
+        start_time = request.POST.get('start_time')
+        end_time = request.POST.get('end_time')
+        
+        Timetable.objects.create(
+            teacher=teacher,
+            day_of_week=int(day),
+            subject=subject,
+            start_time=start_time,
+            end_time=end_time
+        )
+        return redirect('manage_timetable', user_id=user_id)
+        
+    timetable = Timetable.objects.filter(teacher=teacher).order_by('day_of_week', 'start_time')
+    return render(request, 'attendance/manage_timetable.html', {
+        'teacher': teacher, 
+        'timetable': timetable
+    })
+
+@login_required
+def delete_timetable_slot(request, slot_id):
+    """Delete a timetable slot"""
+    if request.method == 'POST':
+        slot = get_object_or_404(Timetable, id=slot_id)
+        user_id = slot.teacher.user_id
+        slot.delete()
+        return redirect('manage_timetable', user_id=user_id)
+    return redirect('index')
+
+# Teacher Portal Views
+
+def teacher_login(request):
+    """Teacher Login Page"""
+    if request.method == 'POST':
+        # Check if it's a JSON request (Face Login)
+        if request.content_type and request.content_type.startswith('application/json'):
+            try:
+                data = json.loads(request.body)
+                image_data = data.get('image')
+                
+                if not image_data:
+                    return JsonResponse({'success': False, 'message': 'No image provided'})
+                
+                # Decode image
+                try:
+                    image_bytes = base64.b64decode(image_data.split(',')[1])
+                    nparr = np.frombuffer(image_bytes, np.uint8)
+                    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                except Exception as e:
+                    return JsonResponse({'success': False, 'message': 'Image decode failed'})
+
+                # Recognize face
+                recognized_faces = face_system.recognize_faces(frame)
+                
+                # Debug logging
+                print(f"DEBUG: Login Attempt - Found {len(recognized_faces)} faces")
+                for f in recognized_faces:
+                    print(f"DEBUG: Face detected: {f['name']} with confidence {f['confidence']}")
+
+                if not recognized_faces:
+                    return JsonResponse({'success': False, 'message': 'No face detected'})
+                
+                # Check for match (highest confidence)
+                best_match = None
+                max_conf = 0
+                
+                for face in recognized_faces:
+                    # Only accept if it's NOT Unknown
+                    if face['name'] != "Unknown" and face['confidence'] > max_conf:
+                        max_conf = face['confidence']
+                        best_match = face['name']
+                
+                if best_match:
+                    try:
+                        teacher = User.objects.get(user_id=best_match)
+                        request.session['teacher_id'] = teacher.user_id
+                        from django.urls import reverse
+                        print(f"DEBUG: Login Successful for {best_match}")
+                        return JsonResponse({'success': True, 'redirect_url': reverse('teacher_dashboard')})
+                    except User.DoesNotExist:
+                        print(f"DEBUG: User {best_match} not found in DB")
+                        return JsonResponse({'success': False, 'message': 'Face recognized but user not found'})
+                else:
+                    print("DEBUG: All faces were Unknown or below threshold")
+                    return JsonResponse({'success': False, 'message': 'Face not recognized. Please try again or use password.'})
+                    
+            except Exception as e:
+                import traceback
+                print(f"DEBUG: Login Error: {traceback.format_exc()}")
+                return JsonResponse({'success': False, 'message': f'Error: {str(e)}'})
+                
+        # Standard Password Login
+        else:
+            user_id = request.POST.get('user_id')
+            password = request.POST.get('password')
+            try:
+                teacher = User.objects.get(user_id=user_id)
+                if teacher.password == password:  # Note: Use hashed passwords in production
+                    request.session['teacher_id'] = teacher.user_id
+                    return redirect('teacher_dashboard')
+                else:
+                    return render(request, 'attendance/teacher_login.html', {'error': 'Invalid credentials'})
+            except User.DoesNotExist:
+                return render(request, 'attendance/teacher_login.html', {'error': 'Teacher ID not found'})
+            
+    return render(request, 'attendance/teacher_login.html')
+
+def teacher_logout(request):
+    """Logout Teacher"""
+    if 'teacher_id' in request.session:
+        del request.session['teacher_id']
+    return redirect('teacher_login')
+
+def teacher_dashboard(request):
+    """Teacher Dashboard with Timetable"""
+    teacher_id = request.session.get('teacher_id')
+    if not teacher_id:
+        return redirect('teacher_login')
+    
+    teacher = get_object_or_404(User, user_id=teacher_id)
+    today = date.today()
+    day_index = today.weekday()  # 0 = Monday
+    
+    # Get today's timetable
+    timetable = Timetable.objects.filter(teacher=teacher, day_of_week=day_index).order_by('start_time')
+    
+    timetable_data = []
+    current_time = datetime.now().time()
+    
+    for slot in timetable:
+        # Check if attendance marked
+        is_marked = LectureAttendance.objects.filter(
+            teacher=teacher, 
+            timetable=slot, 
+            date=today
+        ).exists()
+        
+        # Determine status
+        status = 'Upcoming'
+        if is_marked:
+            status = 'Present'
+        elif current_time > slot.end_time:
+            status = 'Missed'
+        elif current_time >= slot.start_time:
+            status = 'Active'
+            
+        timetable_data.append({
+            'id': slot.id,
+            'subject': slot.subject,
+            'start_time': slot.start_time,
+            'end_time': slot.end_time,
+            'is_marked': is_marked,
+            'status': status
+        })
+        
+    context = {
+        'teacher': teacher,
+        'timetable': timetable_data,
+        'today': today,
+        'day_name': today.strftime('%A')
+    }
+    return render(request, 'attendance/teacher_dashboard.html', context)
+
+def mark_lecture_attendance(request, timetable_id):
+    """Mark attendance for a specific lecture slot"""
+    teacher_id = request.session.get('teacher_id')
+    if not teacher_id:
+        return redirect('teacher_login')
+        
+    teacher = get_object_or_404(User, user_id=teacher_id)
+    timetable = get_object_or_404(Timetable, id=timetable_id)
+    
+    # Security check: Ensure this timetable belongs to this teacher
+    if timetable.teacher != teacher:
+        return JsonResponse({'success': False, 'message': 'Unauthorized'})
+        
+    # Mark attendance
+    LectureAttendance.objects.get_or_create(
+        teacher=teacher,
+        timetable=timetable,
+        date=date.today(),
+        defaults={'status': 'Present'}
+    )
+    
+    return redirect('teacher_dashboard')

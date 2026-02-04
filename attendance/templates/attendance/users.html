@@ -33,9 +33,15 @@
                     <div style="margin-top: 0.5rem;">📅 Registered: {{ teacher.registered_at }}</div>
                 </div>
 
-                <a href="{% url 'user_detail' teacher.user_id %}" class="btn btn-primary" style="width: 100%;">
-                    View Details
-                </a>
+                <div style="display: flex; gap: 0.5rem;">
+                    <a href="{% url 'user_detail' teacher.user_id %}" class="btn btn-primary" style="flex: 1;">
+                        History
+                    </a>
+                    <a href="{% url 'manage_timetable' teacher.user_id %}" class="btn"
+                        style="flex: 1; background: var(--light); color: var(--dark); text-align: center;">
+                        Timetable
+                    </a>
+                </div>
             </div>
             {% endfor %}
         </div>
