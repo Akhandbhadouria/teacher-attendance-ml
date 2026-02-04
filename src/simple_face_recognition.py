@@ -32,11 +32,14 @@ class SimpleFaceRecognitionSystem:
     def detect_faces(self, frame):
         """Detect faces in the frame"""
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # Apply histogram equalization for better lighting normalization
+        gray = cv2.equalizeHist(gray)
         faces = self.face_cascade.detectMultiScale(
             gray,
-            scaleFactor=1.1,
-            minNeighbors=5,
-            minSize=(100, 100)
+            scaleFactor=1.05,  # More sensitive to face sizes
+            minNeighbors=4,     # Slightly less strict
+            minSize=(80, 80),   # Allow slightly smaller faces
+            flags=cv2.CASCADE_SCALE_IMAGE
         )
         return faces, gray
     
@@ -75,6 +78,10 @@ class SimpleFaceRecognitionSystem:
         
         # Resize to standard size
         face_roi = cv2.resize(face_roi, (200, 200))
+        
+        # Apply additional preprocessing for better quality
+        face_roi = cv2.equalizeHist(face_roi)  # Normalize lighting
+        face_roi = cv2.GaussianBlur(face_roi, (3, 3), 0)  # Reduce noise
         
         # Check if user already exists
         if name in self.known_face_names:
@@ -116,6 +123,10 @@ class SimpleFaceRecognitionSystem:
             face_roi = gray[y:y+h, x:x+w]
             face_roi = cv2.resize(face_roi, (200, 200))
             
+            # Apply same preprocessing as registration
+            face_roi = cv2.equalizeHist(face_roi)
+            face_roi = cv2.GaussianBlur(face_roi, (3, 3), 0)
+            
             name = "Unknown"
             confidence = 0.0
             
@@ -125,8 +136,8 @@ class SimpleFaceRecognitionSystem:
                     label, conf = self.recognizer.predict(face_roi)
                     
                     # Lower confidence value means better match
-                    # Threshold: accept if confidence < 45 (VERY STRICT for security)
-                    if conf < 45 and label < len(self.known_face_names):
+                    # Threshold: accept if confidence < 60 (Balanced for security and usability)
+                    if conf < 60 and label < len(self.known_face_names):
                         name = self.known_face_names[label]
                         # Convert confidence to percentage (inverse)
                         confidence = max(0, (100 - conf) / 100)
